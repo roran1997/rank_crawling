@@ -17,6 +17,7 @@ class KgMusicCrawler(object):
     def get_rank_info(self, url):
         res = requests.get(url, headers=self.headers)
         res.encoding = self.encoding  # 同样读取和写入的编码格式
+        a = res.text
         soup = BeautifulSoup(res.text, 'lxml')
         ranks = soup.select('span.pc_temp_num')
         titles = soup.select('a.pc_temp_songname')
