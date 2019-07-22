@@ -19,6 +19,8 @@ def is_given_week_equals_todays_week(date):
 
 def is_week_of_the_given_date_equals_todays_week_start_at_thursday(date):
     date = pd.to_datetime(date, format='%Y-%m-%d')
+    if date.date() == pd.to_datetime('today').date():
+        return True
     if pd.to_datetime('today').dayofweek <= 2:
         return date.week == pd.to_datetime('today').week - 1
     else:
@@ -127,7 +129,7 @@ class QQMusicCrawler(object):
         singer_mid_list = []
         options = webdriver.ChromeOptions()
         options.add_argument('headless')
-        driver = webdriver.Chrome(executable_path='driver/chromedriver', chrome_options=options)
+        driver = webdriver.Chrome(executable_path='driver/chromedriver', options=options)
         urls = ['https://y.qq.com/portal/singer_list.html#area={}&page={}&'.format(area_code, i) for i in range(1, 4)]
         for url in urls:
             driver.get(url)
@@ -167,7 +169,7 @@ class QQMusicCrawler(object):
         hk_tw_area_code = '2'
         singer_list = []
         singer_mid_list = self.get_area_singer_mid(mainland_area_code) + self.get_area_singer_mid(hk_tw_area_code)
-        for mid in singer_mid_list[:10]:
+        for mid in singer_mid_list:
             singer_list.append(self.get_singer_info(mid))
             time.sleep(random.random() + 0.5)
         singer_df = pd.DataFrame(singer_list)
@@ -186,14 +188,12 @@ class QQMusicCrawler(object):
 
 
 if __name__ == '__main__':
-    qmc = QQMusicCrawler('2019-7-20')
+    date = pd.to_datetime('today').strftime('%Y-%m-%d')
+    qmc = QQMusicCrawler(date)
     song_info = qmc.get_song_info('213374282')
     singer_info = qmc.get_singer_info('002Vcz8F2hpBQj')
     rank_pop = qmc.get_rank_pop()
     rank_hot = qmc.get_rank_hot()
     rank_new = qmc.get_rank_new()
     singer_df = qmc.get_singer_list()
-    singer_df.to_csv('test_qq_singer_list.csv', index=False)
-
-
-
+    singer_df.to_csv('singer_list.csv', index=False)
