@@ -13,12 +13,34 @@ def is_given_date_equals_today(date):
 
 
 def is_given_week_equals_todays_week(date):
-    return (pd.to_datetime(date, format='%Y-%m-%d').week == pd.to_datetime('today').week) & \
+    return is_week_of_the_given_date_equals_todays_week_start_at_thursday(date) & \
            (pd.to_datetime(date, format='%Y-%m-%d') > pd.to_datetime('today') - pd.Timedelta('1W'))
+
+
+def is_week_of_the_given_date_equals_todays_week_start_at_thursday(date):
+    date = pd.to_datetime(date, format='%Y-%m-%d')
+    if pd.to_datetime('today').dayofweek <= 2:
+        return date.week == pd.to_datetime('today').week - 1
+    else:
+        return date.week == pd.to_datetime('today').week
+
+
+def is_given_date_before_thursday(date):
+    date = pd.to_datetime(date, format='%Y-%m-%d')
+    return True if date.dayofweek <= 2 else False
 
 
 def roll_back_datetime(dt, td):
     return pd.to_datetime(dt) - pd.Timedelta(td)
+
+
+def get_number_of_week_to_roll_back(date):
+    num_rweek = 0
+    if is_given_week_equals_todays_week(date):
+        num_rweek += 1
+    if is_given_date_before_thursday(date):
+        num_rweek += 1
+    return num_rweek
 
 
 class QQMusicCrawler(object):
@@ -32,10 +54,9 @@ class QQMusicCrawler(object):
             self.date = roll_back_datetime(date, '1D').strftime('%Y-%m-%d')
         else:
             self.date = pd.to_datetime(date).strftime('%Y-%m-%d')
-        if is_given_week_equals_todays_week(date):
-            self.week = '{}_{}'.format(roll_back_datetime(date, '1W').year, roll_back_datetime(date, '1W').week)
-        else:
-            self.week = '{}_{}'.format(pd.to_datetime(date, format='%Y-%m-%d').year, pd.to_datetime(date, format='%Y-%m-%d'))
+
+        date_for_week = pd.to_datetime(roll_back_datetime(date, '{}W'.format(get_number_of_week_to_roll_back(date))))
+        self.week = '{}_{}'.format(date_for_week.year, date_for_week.week)
         print('Querying ranking for date: {}, week: {}'.format(self.date, self.week))
 
     def extract_rank_songs(self, rank_data):
@@ -104,14 +125,14 @@ class QQMusicCrawler(object):
 
     def get_area_singer_mid(self, area_code):
         singer_mid_list = []
-        driver = webdriver.Chrome(executable_path='/Users/yangyajing/Downloads/chromedriver')
+        driver = webdriver.Chrome(executable_path='driver/chromedriver')
         urls = ['https://y.qq.com/portal/singer_list.html#area={}&page={}&'.format(area_code, i) for i in range(1, 4)]
         for url in urls:
             driver.get(url)
-            time.sleep(3)  # seconds
+            time.sleep(7)  # seconds
             soup = BeautifulSoup(driver.page_source, 'lxml')
-            singer_mid_list += [singer.get('data-singermid') for singer in soup.find_all('a', 'singer_list__cover')]
-            singer_mid_list += [singer.get('data-singermid') for singer in soup.find_all('a', 'singer_list_txt__link')]
+            singer_mid_list += list(set([singer.get('data-singermid') for singer in soup.find_all('a', 'singer_list__cover')]))
+            singer_mid_list += list(set([singer.get('data-singermid') for singer in soup.find_all('a', 'singer_list_txt__link')]))
             time.sleep(random.random() + 0.5)
         driver.quit()
         return singer_mid_list
@@ -144,7 +165,7 @@ class QQMusicCrawler(object):
         hk_tw_area_code = '2'
         singer_list = []
         singer_mid_list = self.get_area_singer_mid(mainland_area_code) + self.get_area_singer_mid(hk_tw_area_code)
-        for mid in singer_mid_list:
+        for mid in singer_mid_list[:10]:
             singer_list.append(self.get_singer_info(mid))
             time.sleep(random.random() + 0.5)
         singer_df = pd.DataFrame(singer_list)
@@ -170,7 +191,7 @@ if __name__ == '__main__':
     rank_hot = qmc.get_rank_hot()
     rank_new = qmc.get_rank_new()
     singer_df = qmc.get_singer_list()
-    singer_df.to_csv('singer_list.csv', index=False)
+    singer_df.to_csv('test_qq_singer_list.csv', index=False)
 
 
 
