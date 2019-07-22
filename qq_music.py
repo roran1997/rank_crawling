@@ -97,26 +97,26 @@ class QQMusicCrawler(object):
 
     def get_rank_info(self, url):
         res = requests.get(url, headers=self.headers)
-        res.encoding = self.encoding  # 同样读取和写入的编码格式
+        res.encoding = self.encoding
         data = json.loads(res.text, encoding=res.encoding)
         data = self.extract_rank_songs(data)
         return data
 
-    def get_rank_pop(self): # 流行指数榜
+    def get_rank_pop(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=4&type=top&song_begin=%7B%7D'.format(self.date)
         rank_pop_df = self.get_rank_info(url)
         time.sleep(1)
         return rank_pop_df
 
-    def get_rank_hot(self): # 热歌榜
+    def get_rank_hot(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=26&type=top&song_begin=%7B%7D'.format(self.week)
         rank_hot_df = self.get_rank_info(url)
         time.sleep(1)
         return rank_hot_df
 
-    def get_rank_new(self): # 新歌榜
+    def get_rank_new(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=27&type=top&song_begin=%7B%7D'.format(self.date)
         rank_new_df = self.get_rank_info(url)
@@ -125,7 +125,9 @@ class QQMusicCrawler(object):
 
     def get_area_singer_mid(self, area_code):
         singer_mid_list = []
-        driver = webdriver.Chrome(executable_path='driver/chromedriver')
+        options = webdriver.ChromeOptions()
+        options.add_argument('headless')
+        driver = webdriver.Chrome(executable_path='driver/chromedriver', chrome_options=options)
         urls = ['https://y.qq.com/portal/singer_list.html#area={}&page={}&'.format(area_code, i) for i in range(1, 4)]
         for url in urls:
             driver.get(url)
@@ -144,7 +146,7 @@ class QQMusicCrawler(object):
               'get_singer_detail_info%22%2C%22param%22%3A%7B%22sort%22%3A5%2C%22singermid%22%3A%22{}%22%2C%22sin%22' \
               '%3A0%2C%22num%22%3A10%7D%2C%22module%22%3A%22music.web_singer_info_svr%22%7D%7D'.format(mid)
         res = requests.get(url, headers=self.headers)
-        res.encoding = self.encoding  # 同样读取和写入的编码格式
+        res.encoding = self.encoding
         data = json.loads(res.text, encoding=res.encoding)
         singer_info = self.extract_singer_info(data)
         return singer_info
