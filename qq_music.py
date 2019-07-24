@@ -5,7 +5,6 @@ import pandas as pd
 import utils
 import json
 import random
-from selenium import webdriver
 
 
 def is_given_date_equals_today(date):
@@ -61,7 +60,7 @@ class QQMusicCrawler(object):
         self.week = '{}_{}'.format(date_for_week.year, date_for_week.week)
         print('Querying ranking for date: {}, week: {}'.format(self.date, self.week))
 
-    def extract_rank_songs(self, rank_data):
+    def extract_rank_songs(self, rank_data, rank_name):
         def get_rank_first_lvl_value(key):
             value_list = [song[key] for song in rank_data['songlist']]
             return value_list
@@ -83,6 +82,7 @@ class QQMusicCrawler(object):
         songmids = get_rank_second_lvl_data_value('songmid')
         singernames = get_rank_second_lvl_singer_value('name')
         singermids = get_rank_second_lvl_singer_value('mid')
+        rank_date = self.week if rank_name == 'hot' else self.date
 
         rank_df = pd.DataFrame({
             'cur_count': cur_counts,
@@ -93,43 +93,48 @@ class QQMusicCrawler(object):
             'singername': singernames,
             'singermid': singermids,
             'songname': songnames,
-            'songmid': songmids
+            'songmid': songmids,
+            'date': rank_date
         })
         return rank_df
 
-    def get_rank_info(self, url):
+    def get_rank_info(self, url, rank_name):
         res = requests.get(url, headers=self.headers)
         res.encoding = self.encoding
         data = json.loads(res.text, encoding=res.encoding)
-        data = self.extract_rank_songs(data)
+        data = self.extract_rank_songs(data, rank_name)
         return data
 
     def get_rank_pop(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=4&type=top&song_begin=%7B%7D'.format(self.date)
-        rank_pop_df = self.get_rank_info(url)
+        rank_pop_df = self.get_rank_info(url, 'pop')
         time.sleep(1)
         return rank_pop_df
 
     def get_rank_hot(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=26&type=top&song_begin=%7B%7D'.format(self.week)
-        rank_hot_df = self.get_rank_info(url)
+        rank_hot_df = self.get_rank_info(url, 'hot')
         time.sleep(1)
         return rank_hot_df
 
     def get_rank_new(self):
         url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg?tpl=3&page=detail&date={}' \
               '&topid=27&type=top&song_begin=%7B%7D'.format(self.date)
-        rank_new_df = self.get_rank_info(url)
+        rank_new_df = self.get_rank_info(url, 'new')
         time.sleep(1)
         return rank_new_df
 
+    def extract_ranks_to_csv(self):
+        utils.append_new_results_to_csv(self.get_rank_pop(), 'qq_music_results/rank_pop.csv')
+        utils.append_new_results_to_csv(self.get_rank_hot(), 'qq_music_results/rank_hot.csv')
+        utils.append_new_results_to_csv(self.get_rank_new(), 'qq_music_results/rank_new.csv')
+        return 1
+
     def get_area_singer_mid(self, area_code):
         singer_mid_list = []
-        options = webdriver.ChromeOptions()
-        options.add_argument('headless')
-        driver = webdriver.Chrome(executable_path='driver/chromedriver', options=options)
+        driver = utils.launch_driver_in_headless_mode()
         urls = ['https://y.qq.com/portal/singer_list.html#area={}&page={}&'.format(area_code, i) for i in range(1, 4)]
         for url in urls:
             driver.get(url)
@@ -161,7 +166,8 @@ class QQMusicCrawler(object):
             fans = data['singer_info']['fans'],
             total_album = data['total_album'],
             total_mv = data['total_mv'],
-            total_song = data['total_song'])
+            total_song = data['total_song'],
+            date = self.date)
         return singer_info
 
     def get_singer_list(self):
@@ -169,11 +175,16 @@ class QQMusicCrawler(object):
         hk_tw_area_code = '2'
         singer_list = []
         singer_mid_list = self.get_area_singer_mid(mainland_area_code) + self.get_area_singer_mid(hk_tw_area_code)
-        for mid in singer_mid_list:
+        for mid in singer_mid_list[:3]:
             singer_list.append(self.get_singer_info(mid))
             time.sleep(random.random() + 0.5)
         singer_df = pd.DataFrame(singer_list)
         return singer_df
+
+    def extract_singer_list_to_csv(self):
+        singer_df = self.get_singer_list()
+        utils.append_new_results_to_csv(singer_df, 'qq_music_results/singer_list.csv')
+        return 1
 
     def get_song_info(self, mid):
         url = 'https://c.y.qq.com/node/m/client/cmt_list/index.html?type=1&id={}'.format(mid)
@@ -192,8 +203,5 @@ if __name__ == '__main__':
     qmc = QQMusicCrawler(date)
     song_info = qmc.get_song_info('213374282')
     singer_info = qmc.get_singer_info('002Vcz8F2hpBQj')
-    rank_pop = qmc.get_rank_pop()
-    rank_hot = qmc.get_rank_hot()
-    rank_new = qmc.get_rank_new()
-    singer_df = qmc.get_singer_list()
-    singer_df.to_csv('singer_list.csv', index=False)
+    qmc.extract_ranks_to_csv()
+    qmc.extract_singer_list_to_csv()

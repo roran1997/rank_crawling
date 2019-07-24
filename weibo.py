@@ -1,16 +1,13 @@
 import time
-from selenium import webdriver
 import pandas as pd
-import os
-from utils import launch_driver_in_headless_mode
+import utils
 
 
 class WeiboCrawler(object):
 
     def __init__(self):
-        self.driver = launch_driver_in_headless_mode()
+        self.driver = utils.launch_driver_in_headless_mode()
         self.dt = pd.to_datetime('today').strftime('%Y-%m-%d %H:%M')
-
 
     def get_user_num_fans(self, id):
         url = 'https://m.weibo.cn/p/{}'.format(id)
@@ -23,12 +20,9 @@ class WeiboCrawler(object):
 
     def extract_hcy_num_fans_to_csv(self):
         nk_name, num_fans = self.get_user_num_fans('1005051624923463')
-        hcy_fans = pd.DataFrame({'nick_name': [nk_name], 'num_fans': [num_fans], 'datetime': self.dt})
-        hcy_fans_cvs_file = 'weibo_results/hcy_fans.csv'
-        if os.path.exists(hcy_fans_cvs_file):
-            hcy_past_fans = pd.read_csv(hcy_fans_cvs_file)
-            hcy_fans = hcy_past_fans.append(hcy_fans)
-        hcy_fans.to_csv(hcy_fans_cvs_file, index=False)
+        hcy_fans = pd.DataFrame({'nickname': [nk_name], 'num_fans': [num_fans], 'datetime': self.dt})
+        hcy_fans_cvs_filepath = 'weibo_results/hcy_fans.csv'
+        utils.append_new_results_to_csv(hcy_fans, hcy_fans_cvs_filepath)
         return 'Number of fans of {}: {} has been saved to csv files. '.format(nk_name, num_fans)
 
     def get_rank_super_topic(self):
@@ -56,25 +50,21 @@ class WeiboCrawler(object):
                 time = self.dt)
             rank_st_list.append(topic_info)
         rank_st_df = pd.DataFrame(rank_st_list)
-        self.driver.quit()
         return rank_st_df
 
     def extract_super_topic_data_to_csv(self):
         cur_st = self.get_rank_super_topic()
         super_topic_cvs_file = 'weibo_results/super_topic.csv'
-        if os.path.exists(super_topic_cvs_file):
-            past_st = pd.read_csv(super_topic_cvs_file)
-            cur_st = past_st.append(cur_st)
-        cur_st.to_csv(super_topic_cvs_file, index=False)
+        utils.append_new_results_to_csv(cur_st, super_topic_cvs_file)
+        return 1
 
     def quit_driver(self):
         self.driver.quit()
+        return 1
 
 
-wc = WeiboCrawler()
-wc.extract_hcy_num_fans_to_csv()
-wc.extract_super_topic_data_to_csv()
-wc.quit_driver()
-
-
-
+if __name__ == '__main__':
+    wc = WeiboCrawler()
+    wc.extract_hcy_num_fans_to_csv()
+    wc.extract_super_topic_data_to_csv()
+    wc.quit_driver()
