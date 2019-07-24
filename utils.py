@@ -53,10 +53,10 @@ def scroll_to_page_end(driver, element_name, timeToSleep=100):
             time.sleep(30)
 
 
-def append_new_results_to_csv(df, filepath):
+def append_new_results_to_csv(df, filepath, check_duplicates_subset=None):
     if os.path.exists(filepath):
         past_df = pd.read_csv(filepath)
         df = past_df.append(df)
-        df = df.drop_duplicates()
+        df = df.drop_duplicates(subset=check_duplicates_subset)
     df.to_csv(filepath, index=False)
     return "Successfully saved."

@@ -127,9 +127,10 @@ class QQMusicCrawler(object):
         return rank_new_df
 
     def extract_ranks_to_csv(self):
-        utils.append_new_results_to_csv(self.get_rank_pop(), 'qq_music_results/rank_pop.csv')
-        utils.append_new_results_to_csv(self.get_rank_hot(), 'qq_music_results/rank_hot.csv')
-        utils.append_new_results_to_csv(self.get_rank_new(), 'qq_music_results/rank_new.csv')
+        check_duplicates_columns = ['date', 'songname', 'cur_count'] # check duplicates on columns contain no list.
+        utils.append_new_results_to_csv(self.get_rank_pop(), 'qq_music_results/rank_pop.csv', check_duplicates_columns)
+        utils.append_new_results_to_csv(self.get_rank_hot(), 'qq_music_results/rank_hot.csv', check_duplicates_columns)
+        utils.append_new_results_to_csv(self.get_rank_new(), 'qq_music_results/rank_new.csv', check_duplicates_columns)
         return 1
 
     def get_area_singer_mid(self, area_code):
@@ -175,7 +176,7 @@ class QQMusicCrawler(object):
         hk_tw_area_code = '2'
         singer_list = []
         singer_mid_list = self.get_area_singer_mid(mainland_area_code) + self.get_area_singer_mid(hk_tw_area_code)
-        for mid in singer_mid_list[:3]:
+        for mid in singer_mid_list:
             singer_list.append(self.get_singer_info(mid))
             time.sleep(random.random() + 0.5)
         singer_df = pd.DataFrame(singer_list)
